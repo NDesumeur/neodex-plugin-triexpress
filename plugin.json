@@ -1,0 +1,20 @@
+{
+  "id": "neodex.triexpress",
+  "name": "Tri express",
+  "version": "1.0.0",
+  "author": "NDesumeur",
+  "description": "Centre de tri : les colis descendent le tapis, envoie chacun dans le bac de sa couleur. Les bacs changent de place, les bombes ne se trient pas.",
+  "icon": "icon.png",
+  "entry": "index.js",
+  "view": "triexpress",
+  "neobase": ">=4.0.0",
+  "type": "app",
+  "category": "Jeux",
+  "mobile": false,
+  "system": false,
+  "dependencies": {},
+  "sdk": "2.1.0",
+  "permissions": [
+    "storage"
+  ]
+}
