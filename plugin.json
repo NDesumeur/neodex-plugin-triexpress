@@ -1,7 +1,7 @@
 {
   "id": "neodex.triexpress",
   "name": "Tri express",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "NDesumeur",
   "description": "Centre de tri : les colis descendent le tapis, envoie chacun dans le bac de sa couleur. Les bacs changent de place, les bombes ne se trient pas.",
   "icon": "icon.png",
