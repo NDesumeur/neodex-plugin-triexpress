@@ -1,9 +1,9 @@
 {
   "pluginId": "neodex.triexpress",
   "repo": "NDesumeur/neodex-plugin-triexpress",
-  "version": "1.0.1",
-  "sha256": "c31102a673f592dc56f03e573d706578f6e37eb217278d1728cbfd029c05c6f0",
-  "approvedAt": "2026-11-06T21:35:48.033Z",
+  "version": "1.0.2",
+  "sha256": "f8c9c2ddeb81c19b18ca17915cd9a922ab02f083d231b711f20ec3aa0a628b6f",
+  "approvedAt": "2026-11-08T12:10:50.819Z",
   "neobase": ">=4.0.0",
-  "signature": "GoqsVaSQITEO75+2zXJSqO3up+HJ3iyh9G0MbiwlAfpO5cw/jCdQlxOlQV8hiWxImUXJzPfb5Q9WU24xpiG5Cw=="
+  "signature": "wX7LDhI7IzsWLwnpwow+BwY1NX+Rq6I+jDxs6nCPXjviHw25v0ag2Km+SivpxRsMT4SyPkmVgPcCp/x5N8BJDQ=="
 }
