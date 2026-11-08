@@ -1,5 +1,5 @@
 // Tri express : Centre de tri : les colis descendent le tapis, envoie chacun dans le bac de sa couleur. Les bacs changent de place, les bombes ne se trient pas.
-// Jeu NeoDex en pixel art dessiné à la main (police bitmap, cadres et boutons en pixels). Il tourne dans le bac à sable de NeoDex.
+// Jeu NeoDex : police, cadres et boutons propres au jeu. Il tourne dans le bac à sable de NeoDex.
 const HTML = `<div class="appWrap wide">
   <div class="agHead"><span class="label">Tri express</span><span class="hint">← ↓ → : bac de gauche, du milieu, de droite · bombe : ne rien faire · P : pause</span></div>
   <div class="gMain"><div class="gameBox"><canvas id="txCanvas" width="216" height="288"></canvas></div>
