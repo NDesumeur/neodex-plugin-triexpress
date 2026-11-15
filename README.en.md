@@ -36,3 +36,11 @@ Your record and statistics are stored by NeoDex, backed up and synced between yo
 In NeoDex: **NeoStore → Discover → Tri express → Install**.
 
 Building a plugin: see the [NeoDex SDK](https://github.com/NDesumeur/neodex-sdk).
+
+## Full screen, special parcels and bombs
+
+- **Full screen**: "FULL SCREEN" button. The game also grows with the window, from a small laptop to a big screen.
+- **Bigger**: a wider belt and bigger parcels, with a large label.
+- **Bombs no longer block**: a bomb at the front rushes to the hole on its own, without making the parcels behind it wait. ↑ (or Space, or a click on the belt) drops it right away, for 5 points.
+- **Fragile parcel** (glass label): it flies more gently and is worth double, but it breaks if you throw it while another parcel is still flying.
+- **Double parcel** (two boxes, "x2"): to send twice into the right bin.

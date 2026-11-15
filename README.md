@@ -36,3 +36,11 @@ Record et statistiques sont enregistrés par NeoDex, sauvegardés et synchronis�
 Dans NeoDex : **NeoStore → À découvrir → Tri express → Installer**.
 
 Développer un plugin : voir le [SDK NeoDex](https://github.com/NDesumeur/neodex-sdk).
+
+## Plein écran, colis spéciaux et bombes
+
+- **Plein écran** : bouton « PLEIN ÉCRAN ». Le jeu grandit aussi avec la fenêtre, du petit portable au grand écran.
+- **Plus grand** : un tapis plus large et des colis plus gros, avec une grande étiquette.
+- **Les bombes ne bloquent plus** : une bombe en tête de file file toute seule vers le trou, sans faire attendre les colis derrière elle. ↑ (ou Espace, ou un clic sur le tapis) la jette tout de suite, pour 5 points.
+- **Colis fragile** (étiquette du verre) : il vole plus doucement et rapporte le double, mais il casse si tu le lances pendant qu'un autre colis vole encore.
+- **Colis double** (deux cartons, « x2 ») : à envoyer deux fois dans le bon bac.

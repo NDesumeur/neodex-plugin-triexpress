@@ -1,22 +1,24 @@
 // Tri express : Centre de tri : les colis descendent le tapis, envoie chacun dans le bac de sa couleur. Les bacs changent de place, les bombes ne se trient pas.
 // Jeu NeoDex : police, cadres et boutons propres au jeu. Il tourne dans le bac à sable de NeoDex.
 const HTML = `<div class="appWrap wide">
-  <div class="agHead"><span class="label">Tri express</span><span class="hint">← ↓ → : bac de gauche, du milieu, de droite · bombe : ne rien faire · P : pause</span></div>
+  <div class="agHead"><span class="label">Tri express</span><span class="hint">← ↓ → : bac de gauche, du milieu, de droite · ↑ ou Espace : jeter la bombe · P : pause</span></div>
   <div class="gMain"><div class="gameBox"><canvas id="txCanvas" width="216" height="288"></canvas></div>
     <div class="gSide">
       <div class="sysCard"><b>RECORDS</b><div class="gStats" id="txStats"></div></div>
-      <div class="row"><button class="btn main" id="txNew">NOUVELLE JOURNÉE</button></div>
-      <div class="hint">Rouge cœur, bleu goutte, vert feuille. Les bombes passent la ligne toutes seules : si tu en tries une, c'est une erreur.</div>
+      <div class="row"><button class="btn main" id="txNew">NOUVELLE JOURNÉE</button><button class="btn" id="txFs">PLEIN ÉCRAN</button></div>
+      <div class="hint">Rouge cœur, bleu goutte, vert feuille. Une bombe file toute seule vers le trou ; ↑ ou Espace l'y jette tout de suite. Si tu la mets dans un bac, c'est une erreur.</div><div class="hint">Colis FRAGILE (verre) : attends qu'aucun colis ne vole avant de le lancer, sinon il casse. Colis DOUBLE : deux cartons, à envoyer deux fois.</div>
     </div></div>
 </div>`;
 const CSS = `.gMain{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
-.gameBox{display:grid;place-items:center;padding:10px;background:#05010b;flex:2;min-width:320px;position:relative}
+.gameBox{display:grid;place-items:center;padding:10px;background:#05010b;flex:2 1 480px;min-width:min(100%,320px);position:relative}
+.gameBox:fullscreen{padding:0}
+.gameBox:fullscreen canvas{width:min(100vw,calc(100vh * 216 / 288));max-width:none}
 .gameBox canvas{width:100%;image-rendering:pixelated;cursor:var(--cp,pointer);touch-action:none}
 .gSide{display:flex;flex-direction:column;gap:14px;flex:1;min-width:250px;max-width:420px}
 .gSide .sysCard{display:flex;flex-direction:column}
 .gStats{display:grid;grid-template-columns:1fr auto;gap:4px 14px}
 .gStats b{text-align:right}
-.gameBox canvas{max-width:460px;aspect-ratio:216/288}`;
+.gameBox canvas{width:min(100%,max(280px,calc((100vh - 170px) * 216 / 288)));height:auto;aspect-ratio:216/288}`;
 /* ---------- l'habillage pixel art, dessiné à la main : police bitmap (accents compris), cadres, boutons, icônes ----------
    Tout est en pixels pleins, agrandis par 2 sans lissage : aucun dégradé, aucune ombre floue. */
 const PXK = (() => {
@@ -293,7 +295,7 @@ export default async function (ctx) {
   tile: ['................', '...:............', '................', '..........+.....', '................', '................', '.....:..........', '................',
     '................', '.............:..', '................', '..+.............', '................', '.........:......', '................', '................'] },
   emblem: ['............', '.kkkkkkkkkk.', '.kbbbybbbbk.', '.kbbbybbbbk.', '.kyyyyyyyyk.', '.kbbbybkkbk.', '.kbbbybkrkk.', '.kbbbybkkbk.', '.kkkkkkkkkk.', '............'],
-  icons: [[/^NOUVELLE/, 'play'], [/^RECORDS/, 'crown']] });
+  icons: [[/^NOUVELLE/, 'play'], [/^RECORDS/, 'crown'], [/^PLEIN/, 'full']] });
   const $ = id => view.querySelector('#' + id) || document.getElementById(id);
   const doc = async n => { try { return await folder.read(n); } catch { return null; } };
   const games = { best: {}, ...(await doc('games')) };
@@ -330,26 +332,37 @@ const TX_COL = [['rouge', '#ff4a5a', '#a81a2a', ['.k.k.', 'kwkrk', 'krrrk', '.kr
 const txs = gstore('triexpress', {days: 0, sorted: 0, bombs: 0});
 let tx = null;
 const txCanvas = (w, h, fn) => { const c = el('canvas'); c.width = w; c.height = h; fn(c.getContext('2d')); return c; };
-function txBox(ci) {  // un colis 18 × 14 : carton, scotch, étiquette avec le symbole de la couleur ; ou une bombe
-  return txCanvas(18, 16, g => {
-    if (ci < 0) { px(g, '#140a04', 4, 3, 10, 12); px(g, '#140a04', 3, 5, 12, 8); px(g, '#2a2a3a', 5, 4, 8, 10); px(g, '#2a2a3a', 4, 6, 10, 6); px(g, '#5a5a6a', 6, 5, 2, 2); px(g, '#8a6a3a', 8, 1, 2, 3); px(g, '#ffd84a', 10, 0, 2, 2); px(g, '#ff8a2a', 11, 1, 1, 1); return; }
+const TXB = {W: 26, H: 22, GAP: 24};  // un colis, et l'écart entre deux colis de la file
+function txBox(ci, kind = '') {  // un colis 26 × 22 : carton, scotch, grande étiquette avec le symbole de la couleur ; fragile (verre) ou double ; ou une bombe
+  return txCanvas(26, 22, g => {
+    if (ci < 0) { px(g, '#140a04', 7, 5, 14, 17); px(g, '#140a04', 5, 7, 18, 13); px(g, '#140a04', 6, 6, 16, 15); px(g, '#2a2a3a', 7, 7, 14, 13); px(g, '#2a2a3a', 6, 9, 16, 9); px(g, '#3a3a4c', 8, 8, 6, 4); px(g, '#6a6a7c', 9, 9, 2, 2);
+      px(g, '#140a04', 12, 3, 4, 3); px(g, '#8a6a3a', 13, 1, 2, 4); px(g, '#ffd84a', 15, 0, 3, 2); px(g, '#ff8a2a', 17, 0, 1, 1); px(g, '#ffffff', 16, 0, 1, 1); return; }
     const [, c, d, icon] = TX_COL[ci];
-    px(g, '#140a04', 0, 2, 18, 14); px(g, '#c8925a', 1, 3, 16, 12); px(g, '#a8723a', 1, 12, 16, 3); px(g, '#e0b07a', 1, 3, 16, 1); px(g, '#e8d8a0', 7, 3, 3, 12);
-    px(g, '#140a04', 10, 6, 7, 7); px(g, '#fff4e0', 11, 7, 5, 5); sprite(g, icon, 11, 7, {k: d, w: '#ffffff', r: c, b: c, g: c});
+    px(g, '#140a04', 0, 1, 26, 21); px(g, '#c8925a', 1, 2, 24, 19); px(g, '#a8723a', 1, 17, 24, 4); px(g, '#e0b07a', 1, 2, 24, 1); px(g, '#e8d8a0', 4, 2, 4, 19);
+    px(g, '#140a04', 11, 5, 13, 13); px(g, '#fff4e0', 12, 6, 11, 11); const ic = txCanvas(5, 5, h => sprite(h, icon, 0, 0, {k: d, w: '#ffffff', r: c, b: c, g: c})); g.drawImage(ic, 13, 7, 10, 10);
+    if (kind === 'fragile') { px(g, '#140a04', 1, 4, 9, 11); px(g, '#ff4a5a', 2, 5, 7, 9); px(g, '#ffffff', 3, 6, 5, 3); px(g, '#ffffff', 5, 9, 1, 3); px(g, '#ffffff', 4, 12, 3, 1); }  // l'étiquette du verre
   });
 }
-const TX_BOX = [0, 1, 2].map(txBox), TX_BOMB = txBox(-1);
+const TX_BOX = [0, 1, 2].map(c => txBox(c)), TX_FRAG = [0, 1, 2].map(c => txBox(c, 'fragile')), TX_BOMB = txBox(-1);
+const txImg = p => p.c < 0 ? TX_BOMB : p.k === 'fragile' ? TX_FRAG[p.c] : TX_BOX[p.c];
 function txNew() { tx = Object.assign(tx || {tick: 0, raf: 0}, {seen: tx ? tx.tick : 0, mode: 'ready', q: [], fly: [], bins: [0, 1, 2], shuffle: 0, lives: 3, score: 0, combo: 0, sorted: 0, spawn: 0, fx: [], record: false, dead: 0, binsFrom: null, bombs: 0}); }
 const txSpeed = () => .45 + Math.min(1.1, tx.sorted / 120);
 let txac = null;
 function txBeep(f, d, type = 'square', slide = 0) { try { txac ??= new AudioContext(); const o = txac.createOscillator(), g = txac.createGain(), t = txac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d); g.gain.setValueAtTime(.045, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(txac.destination); o.start(t); o.stop(t + d + .02); } catch {} }
+function txDrop() {  // ↑ ou Espace : la bombe en tête de file tombe tout de suite dans le trou
+  const p = tx.q.find(p => p.y > -8); if (tx.mode !== 'play' || !p || p.c >= 0) return false;
+  tx.q.splice(tx.q.indexOf(p), 1); txBombOut(); return true;
+}
+function txBombOut() { tx.bombs++; tx.score += 5; tx.fx.push({x: TX.CX, y: TX.GATE, t: 0, txt: '+5', c: '#ffd84a'}); txBeep(90, .25, 'triangle', 50); }
 function txSend(b) {
   if (tx.mode === 'ready') { tx.mode = 'play'; txs.days++; saveGames(); return; }
   if (tx.mode === 'pause') { tx.mode = 'play'; return; }
   if (tx.mode === 'over') { if (tx.dead > 40) txNew(); return; }
   if (tx.shuffle > 0) return;  // pendant le mélange, les bacs bougent : on attend
   const p = tx.q.find(p => p.y > -8); if (!p) return;
-  tx.q.splice(tx.q.indexOf(p), 1); tx.fly.push({...p, b, t: 0, x0: TX.CX, y0: p.y}); txBeep(300, .05);
+  if (p.k === 'double' && p.n > 1) { p.n--; tx.fly.push({...p, k: '', b, t: 0, x0: TX.CX, y0: p.y - 10}); txBeep(360, .05); return; }  // le carton du dessus part, celui du dessous reste
+  const busy = tx.fly.length > 0;
+  tx.q.splice(tx.q.indexOf(p), 1); tx.fly.push({...p, b, t: 0, x0: TX.CX, y0: p.y, broke: p.k === 'fragile' && busy}); txBeep(300, .05);
 }
 function txLose(x, y, why) { tx.lives--; tx.combo = 0; tx.fx.push({x, y, t: 0, txt: why, c: '#ff4a5a'}); txBeep(140, .3, 'sawtooth', 70); if (tx.lives <= 0) { tx.mode = 'over'; tx.dead = 0; tx.record = best('triexpress', tx.score); txs.sorted += tx.sorted; txs.bombs += tx.bombs; saveGames(); txInfo(); } }
 function txUpdate() {
@@ -358,16 +371,18 @@ function txUpdate() {
   if (tx.mode !== 'play') return;
   const v = txSpeed();
   // nouveaux colis en haut du tapis, de plus en plus serrés ; une bombe de temps en temps
-  if (--tx.spawn <= 0) { const bomb = tx.sorted > 8 && Math.random() < .14; tx.q.push({c: bomb ? -1 : Math.floor(Math.random() * 3), y: -20}); tx.spawn = Math.max(26, 62 - tx.sorted / 3) * (.8 + Math.random() * .4) / (v / .45) * 1.6; }
-  for (let i = 0; i < tx.q.length; i++) { const p = tx.q[i], prev = tx.q[i - 1], stop = prev ? prev.y - 17 : 999; p.y = Math.min(p.y + v, stop); }
+  if (--tx.spawn <= 0) { const bomb = tx.sorted > 8 && Math.random() < .14, r = Math.random(), k = bomb || tx.sorted < 20 ? '' : r < .09 ? 'fragile' : r < .18 ? 'double' : '';
+    tx.q.push({c: bomb ? -1 : Math.floor(Math.random() * 3), y: -20, k, n: k === 'double' ? 2 : 1}); tx.spawn = Math.max(26, 62 - tx.sorted / 3) * (.8 + Math.random() * .4) / (v / .45) * 1.6; }
+  for (let i = 0; i < tx.q.length; i++) { const p = tx.q[i], prev = tx.q[i - 1], stop = prev ? prev.y - TXB.GAP - (prev.n > 1 ? 10 : 0) : 999; p.y = Math.min(p.y + (i === 0 && p.c < 0 ? Math.max(4 * v, 2.5) : v), stop); }  // une bombe en tête file vers le trou : elle ne bloque pas la file
   const front = tx.q[0];
-  if (front && front.y >= TX.GATE) { tx.q.shift(); if (front.c < 0) { tx.bombs++; tx.score += 5; tx.fx.push({x: TX.CX, y: TX.GATE, t: 0, txt: '+5', c: '#ffd84a'}); txBeep(90, .25, 'triangle', 50); } else txLose(TX.CX, TX.GATE, 'RATÉ'); }
+  if (front && front.y >= TX.GATE) { tx.q.shift(); if (front.c < 0) txBombOut(); else txLose(TX.CX, TX.GATE, 'RATÉ'); }
   for (const f of tx.fly) {
-    f.t += .07; if (f.t < 1) continue; f.done = true;
+    f.t += f.k === 'fragile' ? .045 : .07; if (f.t < 1) continue; f.done = true;
     const bx = TX.BINS[f.b];
     if (f.c < 0) txLose(bx, TX.BINY - 20, 'BOUM');
+    else if (f.broke) txLose(bx, TX.BINY - 20, 'CASSÉ');
     else if (tx.bins[f.b] !== f.c) txLose(bx, TX.BINY - 20, 'MAUVAIS BAC');
-    else { tx.combo++; tx.sorted++; const pts = 10 * Math.min(5, 1 + Math.floor(tx.combo / 5)); tx.score += pts; tx.fx.push({x: bx, y: TX.BINY - 20, t: 0, txt: '+' + pts, c: '#7ee07a'}); txBeep(660 + Math.min(8, tx.combo) * 60, .07, 'square', 990);
+    else { tx.combo++; tx.sorted++; const pts = 10 * Math.min(5, 1 + Math.floor(tx.combo / 5)) * (f.k === 'fragile' ? 2 : 1); tx.score += pts; tx.fx.push({x: bx, y: TX.BINY - 20, t: 0, txt: '+' + pts, c: '#7ee07a'}); txBeep(660 + Math.min(8, tx.combo) * 60, .07, 'square', 990);
       if (tx.sorted % 15 === 0) { tx.shuffle = 70; tx.binsFrom = [...tx.bins]; let n; do n = [...tx.bins].sort(() => Math.random() - .5); while (n.every((c, i) => c === tx.bins[i])); tx.bins = n; txBeep(440, .5, 'triangle', 880); } }
   }
   tx.fly = tx.fly.filter(f => !f.done);
@@ -387,12 +402,12 @@ function txDraw() {
   for (let y = 0; y < 230; y += 8) for (let x = (y / 8 % 2) * 8 - 8; x < W; x += 16) { px(g, '#4a2e1a', x + 1, y + 1, 14, 6); px(g, '#5a3a22', x + 1, y + 1, 14, 1); }
   px(g, '#22140a', 0, 230, W, H - 230); px(g, '#2e1c0e', 0, 230, W, 2);
   // le tapis vertical : bords, lattes qui défilent
-  px(g, '#140a04', CX - 14, 0, 28, GATE + 4); px(g, '#4a4a5a', CX - 12, 0, 24, GATE + 2);
-  const sl = Math.floor(tx.tick * (tx.mode === 'play' ? txSpeed() : .2)) % 8; for (let y = -8 + sl; y < GATE; y += 8) px(g, '#3a3a48', CX - 12, y, 24, 2);
-  px(g, '#8a8a9a', CX - 13, 0, 1, GATE + 2); px(g, '#8a8a9a', CX + 12, 0, 1, GATE + 2);
+  px(g, '#140a04', CX - 20, 0, 40, GATE + 4); px(g, '#4a4a5a', CX - 18, 0, 36, GATE + 2);
+  const sl = Math.floor(tx.tick * (tx.mode === 'play' ? txSpeed() : .2)) % 8; for (let y = -8 + sl; y < GATE; y += 8) px(g, '#3a3a48', CX - 18, y, 36, 2);
+  px(g, '#8a8a9a', CX - 19, 0, 1, GATE + 2); px(g, '#8a8a9a', CX + 18, 0, 1, GATE + 2);
   // la ligne de tri, avec ses lampes
-  for (let x = CX - 22; x < CX + 22; x += 4) px(g, Math.floor(tx.tick / 10) % 2 ? '#ffd84a' : '#c8a020', x, GATE + 4, 2, 2);
-  px(g, '#140a04', CX - 26, GATE + 6, 52, 4); px(g, '#1a0e05', CX - 10, GATE + 10, 20, 20);  // le trou pour les bombes
+  for (let x = CX - 26; x < CX + 26; x += 4) px(g, Math.floor(tx.tick / 10) % 2 ? '#ffd84a' : '#c8a020', x, GATE + 4, 2, 2);
+  px(g, '#140a04', CX - 28, GATE + 6, 56, 4); px(g, '#1a0e05', CX - 13, GATE + 10, 26, 20);  // le trou pour les bombes
   // les bacs : caisse, étiquette couleur + symbole, numéro de touche
   for (let i = 0; i < 3; i++) {
     const c = tx.bins[i], [, col, dk, icon] = TX_COL[c], x = Math.round(txBinX(i)) - 26, y = BINY - 16;
@@ -402,15 +417,18 @@ function txDraw() {
     PXK.fill(g, ['←', '↓', '→'][i], x + 33, y - 3, '#140a04', PXK.scale(8), 'center');
   }
   // les colis : la file sur le tapis, ceux qui volent vers un bac (en arc)
-  tx.q.forEach((p, i) => { g.drawImage(p.c < 0 ? TX_BOMB : TX_BOX[p.c], CX - 9, Math.round(p.y - 8)); if (i === 0 && p.y > -8) { px(g, '#ffffff', CX - 12, Math.round(p.y - 9), 2, 2); px(g, '#ffffff', CX + 10, Math.round(p.y - 9), 2, 2); } });
-  for (const f of tx.fly) { const tx1 = txBinX(f.b), x = f.x0 + (tx1 - f.x0) * f.t, y = f.y0 + (BINY - 14 - f.y0) * f.t - Math.sin(f.t * Math.PI) * 40; g.drawImage(f.c < 0 ? TX_BOMB : TX_BOX[f.c], Math.round(x - 9), Math.round(y - 8)); }
+  tx.q.forEach((p, i) => { const y = Math.round(p.y - 11);
+    if (p.k === 'double' && p.n > 1) { g.drawImage(TX_BOX[p.c], CX - 13, y - 10); pxFont(g, 'x2', CX - 22, y + 4, '#ffd84a', 8, 'right'); }  // le carton du dessus
+    g.drawImage(txImg(p), CX - 13, y);
+    if (i === 0 && p.y > -8) { const c = p.c < 0 ? '#ff4a5a' : '#ffffff'; px(g, c, CX - 17, y - 1, 2, 2); px(g, c, CX + 15, y - 1, 2, 2); if (p.c < 0) PXK.fill(g, '↑', CX + 24, y + 13, Math.floor(tx.tick / 8) % 2 ? '#ffd84a' : '#ff8a2a', PXK.scale(8), 'center'); } });
+  for (const f of tx.fly) { const tx1 = txBinX(f.b), x = f.x0 + (tx1 - f.x0) * f.t, y = f.y0 + (BINY - 14 - f.y0) * f.t - Math.sin(f.t * Math.PI) * 40; g.drawImage(txImg(f), Math.round(x - 13), Math.round(y - 11)); }
   for (const f of tx.fx) PXK.fill(g, f.txt, f.x, f.y - f.t / 2, f.c, PXK.scale(8), 'center');
   // score, cœurs, multiplicateur
   pxFont(g, String(tx.score), 6, 14, '#ffffff', 12);
   for (let i = 0; i < 3; i++) sprite(g, ['.kk.kk.', 'krrkrrk', 'krrrrrk', '.krrrk.', '..krk..', '...k...'], W - 26 + i * 8 - 8, 6, {k: '#140a04', r: i < tx.lives ? '#ff4a5a' : '#4a3018'});
   const mult = Math.min(5, 1 + Math.floor(tx.combo / 5)); if (mult > 1) pxFont(g, 'x' + mult, W - 6, 28, '#7ee07a', 8, 'right');
   if (tx.shuffle > 0) PXK.fill(g, 'MÉLANGE !', W / 2, 30, Math.floor(tx.tick / 6) % 2 ? '#ffd84a' : '#ffffff', PXK.scale(12), 'center');
-  if (tx.mode === 'ready') gameText(g, W, [['TRI EXPRESS', '#ffd84a', 16], ['← ↓ → : choisir le bac', '#ffffff'], ['Bombe : ne rien faire', '#d0b08a'], ['Record ' + (games.best.triexpress || 0), '#7ee07a']], 100);
+  if (tx.mode === 'ready') gameText(g, W, [['TRI EXPRESS', '#ffd84a', 16], ['← ↓ → : choisir le bac', '#ffffff'], ['↑ : jeter la bombe', '#d0b08a'], ['Record ' + (games.best.triexpress || 0), '#7ee07a']], 100);
   if (tx.mode === 'pause') gameText(g, W, [['PAUSE', '#ffffff', 12], ['Une touche pour reprendre', '#d0b08a']], 110);
   if (tx.mode === 'over' && tx.dead > 20) gameText(g, W, [['FIN DE LA JOURNÉE', '#ff4a5a', 12], ['Score ' + tx.score, '#ffffff'], [tx.sorted + ' colis triés', '#d0b08a'], [tx.record ? 'NOUVEAU RECORD !' : 'Record ' + (games.best.triexpress || 0), '#7ee07a'], [tx.dead > 40 ? 'Une touche pour recommencer' : '', '#d0b08a']], 96);
 }
@@ -421,20 +439,28 @@ document.addEventListener('keydown', e => {
   if (!view.classList.contains('on') || !tx || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.repeat) return;
   const b = {ArrowLeft: 0, a: 0, q: 0, ArrowDown: 1, s: 1, ArrowRight: 2, d: 2}[e.key];
   if (b !== undefined) { e.preventDefault(); txSend(b); }
-  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (tx.mode !== 'play') txSend(1); }
+  else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'z') { e.preventDefault(); txDrop(); }
+  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (tx.mode !== 'play') txSend(1); else txDrop(); }
   if (e.key.toLowerCase() === 'p' && tx.mode === 'play') tx.mode = 'pause';
 });
-$('txCanvas').onpointerdown = e => { e.preventDefault(); if (!tx) return; const r = e.currentTarget.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * TX.W; txSend(x < 73 ? 0 : x < 143 ? 1 : 2); };
+$('txCanvas').onpointerdown = e => { e.preventDefault(); if (!tx) return; const r = e.currentTarget.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * TX.W, y = (e.clientY - r.top) / r.height * TX.H;
+  if (y < TX.GATE && Math.abs(x - TX.CX) < 24 && txDrop()) return; txSend(x < 73 ? 0 : x < 143 ? 1 : 2); };
 $('txNew').onclick = () => { txNew(); $('txNew').blur(); };
 {  // vérification : bon bac = points, mauvais bac = une vie, une bombe qui passe la ligne = des points
   const keep = tx, realBest = games.best.triexpress, realStats = {...txs}; tx = null;
   txNew(); tx.mode = 'play'; tx.spawn = 1e9; tx.q = [{c: 1, y: 100}]; txSend(tx.bins.indexOf(1)); for (let i = 0; i < 20; i++) txUpdate(); const good = tx.score > 0 && tx.lives === 3;
   tx.q = [{c: 2, y: 100}]; txSend(tx.bins.indexOf(0)); for (let i = 0; i < 20; i++) txUpdate(); const bad = tx.lives === 2;
   const s0 = tx.score; tx.q = [{c: -1, y: TX.GATE - 1}]; for (let i = 0; i < 5; i++) txUpdate(); const bomb = tx.score === s0 + 5 && tx.lives === 2;
-  console.assert(good && bad && bomb, 'triexpress', {good, bad, bomb});
+  tx.q = [{c: -1, y: 20}]; const s1 = tx.score, drop = txDrop() && tx.score === s1 + 5 && !tx.q.length;  // la bombe jetée tout de suite
+  tx.q = [{c: -1, y: 20}, {c: 0, y: -4}]; for (let i = 0; i < 80; i++) txUpdate(); const fast = tx.q.length === 1 && tx.q[0].c === 0;  // elle file seule et libère la file
+  tx.q = [{c: 1, y: 100, k: 'double', n: 2}]; txSend(tx.bins.indexOf(1)); const dbl1 = tx.q.length === 1; txSend(tx.bins.indexOf(1)); for (let i = 0; i < 30; i++) txUpdate(); const dbl = dbl1 && !tx.q.length && tx.lives === 2;
+  tx.q = [{c: 0, y: 100}, {c: 2, y: 76, k: 'fragile'}]; txSend(tx.bins.indexOf(0)); txSend(tx.bins.indexOf(2)); for (let i = 0; i < 40; i++) txUpdate(); const frag = tx.lives === 1;  // lancé pendant un vol : cassé
+  console.assert(good && bad && bomb && drop && fast && dbl && frag, 'triexpress', {good, bad, bomb, drop, fast, dbl, frag});
   if (realBest === undefined) delete games.best.triexpress; else games.best.triexpress = realBest; Object.assign(txs, realStats);
   tx = keep;
 }
+$('txCanvas').__tx = {st: () => tx, drop: () => txDrop()};  // pour le test « local »
+$('txFs').onclick = () => { $('txFs').blur(); try { document.fullscreenElement ? document.exitFullscreen() : $('txCanvas').parentElement.requestFullscreen?.().catch(() => {}); } catch {} };
 ctx.onOpen(() => {
   if (!tx || !tx.g) { txNew(); tx.g = $('txCanvas').getContext('2d'); }
   gameLoop(tx, 'triexpress', txUpdate, txDraw); txInfo();
