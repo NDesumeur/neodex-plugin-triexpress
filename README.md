@@ -4,6 +4,10 @@ Un jeu de réflexes au centre de tri : les colis descendent le tapis roulant, en
 
 *English version: [README.en.md](README.en.md)*
 
+## Des règles qui changent (nouveau en 1.2.0)
+
+Chaque colis a une couleur (son étiquette), une forme (carton, caisse en planches ou sac) et un poids (un à trois blocs noirs). On commence par trier par couleur ; tous les 30 colis, le patron annonce une nouvelle règle : par forme ou par poids. Les étiquettes des bacs changent avec la règle, et la règle en cours reste écrite en haut à gauche.
+
 ## Commandes
 
 - **←** : bac de gauche, **↓** : bac du milieu, **→** : bac de droite. On peut aussi cliquer sur le bac.

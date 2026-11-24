@@ -333,19 +333,30 @@ const txs = gstore('triexpress', {days: 0, sorted: 0, bombs: 0});
 let tx = null;
 const txCanvas = (w, h, fn) => { const c = el('canvas'); c.width = w; c.height = h; fn(c.getContext('2d')); return c; };
 const TXB = {W: 26, H: 22, GAP: 24};  // un colis, et l'écart entre deux colis de la file
-function txBox(ci, kind = '') {  // un colis 26 × 22 : carton, scotch, grande étiquette avec le symbole de la couleur ; fragile (verre) ou double ; ou une bombe
+// les trois règles : par couleur (l'étiquette), par forme (carton, caisse, sac), par poids (1 à 3 blocs noirs)
+const TX_RULES = {c: 'par couleur', s: 'par forme', w: 'par poids'}, TX_ORDER = {c: 'TRIEZ PAR COULEUR !', s: 'TRIEZ PAR FORME !', w: 'TRIEZ PAR POIDS !'};
+const txVal = (p, r) => r === 's' ? p.s || 0 : r === 'w' ? p.w || 0 : p.c;
+function txBox(ci, kind = '', s = 0, w = -1, plain = false) {  // un colis 26 × 22 : carton, scotch, grande étiquette avec le symbole de la couleur ; fragile (verre) ou double ; ou une bombe
   return txCanvas(26, 22, g => {
     if (ci < 0) { px(g, '#140a04', 7, 5, 14, 17); px(g, '#140a04', 5, 7, 18, 13); px(g, '#140a04', 6, 6, 16, 15); px(g, '#2a2a3a', 7, 7, 14, 13); px(g, '#2a2a3a', 6, 9, 16, 9); px(g, '#3a3a4c', 8, 8, 6, 4); px(g, '#6a6a7c', 9, 9, 2, 2);
       px(g, '#140a04', 12, 3, 4, 3); px(g, '#8a6a3a', 13, 1, 2, 4); px(g, '#ffd84a', 15, 0, 3, 2); px(g, '#ff8a2a', 17, 0, 1, 1); px(g, '#ffffff', 16, 0, 1, 1); return; }
     const [, c, d, icon] = TX_COL[ci];
-    px(g, '#140a04', 0, 1, 26, 21); px(g, '#c8925a', 1, 2, 24, 19); px(g, '#a8723a', 1, 17, 24, 4); px(g, '#e0b07a', 1, 2, 24, 1); px(g, '#e8d8a0', 4, 2, 4, 19);
+    if (s === 1) { px(g, '#140a04', 0, 1, 26, 21); px(g, '#9a6a3a', 1, 2, 24, 19); for (const y of [2, 8, 14]) { px(g, '#b8844a', 1, y, 24, 1); px(g, '#6a4420', 1, y + 5, 24, 1); } for (const [x, y] of [[2, 3], [23, 3], [2, 19], [23, 19]]) px(g, '#d8d8e0', x, y, 1, 1); }  // la caisse en planches
+    else if (s === 2) { px(g, '#140a04', 3, 3, 20, 19); px(g, '#140a04', 1, 7, 24, 14); px(g, '#140a04', 2, 5, 22, 17); px(g, '#d8c08a', 3, 5, 20, 16); px(g, '#d8c08a', 2, 8, 22, 12); px(g, '#b89a60', 2, 17, 22, 3); px(g, '#e8d8a8', 4, 5, 6, 1);  // le sac, noué en haut
+      px(g, '#140a04', 9, 0, 8, 6); px(g, '#8a5a2a', 10, 1, 6, 4); px(g, '#b8844a', 10, 1, 6, 1); }
+    else { px(g, '#140a04', 0, 1, 26, 21); px(g, '#c8925a', 1, 2, 24, 19); px(g, '#a8723a', 1, 17, 24, 4); px(g, '#e0b07a', 1, 2, 24, 1); px(g, '#e8d8a0', 4, 2, 4, 19); }
+    for (let i = 0; i <= w; i++) { px(g, '#140a04', 2 + i * 3, 16, 2, 5); }  // le poids
+    if (plain) return;
     px(g, '#140a04', 11, 5, 13, 13); px(g, '#fff4e0', 12, 6, 11, 11); const ic = txCanvas(5, 5, h => sprite(h, icon, 0, 0, {k: d, w: '#ffffff', r: c, b: c, g: c})); g.drawImage(ic, 13, 7, 10, 10);
     if (kind === 'fragile') { px(g, '#140a04', 1, 4, 9, 11); px(g, '#ff4a5a', 2, 5, 7, 9); px(g, '#ffffff', 3, 6, 5, 3); px(g, '#ffffff', 5, 9, 1, 3); px(g, '#ffffff', 4, 12, 3, 1); }  // l'étiquette du verre
   });
 }
-const TX_BOX = [0, 1, 2].map(c => txBox(c)), TX_FRAG = [0, 1, 2].map(c => txBox(c, 'fragile')), TX_BOMB = txBox(-1);
-const txImg = p => p.c < 0 ? TX_BOMB : p.k === 'fragile' ? TX_FRAG[p.c] : TX_BOX[p.c];
-function txNew() { tx = Object.assign(tx || {tick: 0, raf: 0}, {seen: tx ? tx.tick : 0, mode: 'ready', q: [], fly: [], bins: [0, 1, 2], shuffle: 0, lives: 3, score: 0, combo: 0, sorted: 0, spawn: 0, fx: [], record: false, dead: 0, binsFrom: null, bombs: 0}); }
+const TX_BOMB = txBox(-1), TX_IMG = {}, TX_FORM = [0, 1, 2].map(s => txBox(0, '', s, -1, true));
+const txImg = p => p.c < 0 ? TX_BOMB : TX_IMG[p.c + '' + (p.s || 0) + (p.w ?? -1) + (p.k === 'fragile' ? 'f' : '')] ??= txBox(p.c, p.k === 'fragile' ? 'fragile' : '', p.s || 0, p.w ?? -1);
+function txRule() {  // une nouvelle règle, annoncée par le patron
+  const next = Object.keys(TX_RULES).filter(r => r !== tx.rule); tx.rule = next[Math.floor(Math.random() * next.length)]; tx.ruleT = 110; tx.rules++; txBeep(520, .4, 'square', 260);
+}
+function txNew() { tx = Object.assign(tx || {tick: 0, raf: 0}, {seen: tx ? tx.tick : 0, mode: 'ready', q: [], fly: [], bins: [0, 1, 2], shuffle: 0, lives: 3, score: 0, combo: 0, sorted: 0, spawn: 0, fx: [], record: false, dead: 0, binsFrom: null, bombs: 0, rule: 'c', ruleT: 0, rules: 0}); }
 const txSpeed = () => .45 + Math.min(1.1, tx.sorted / 120);
 let txac = null;
 function txBeep(f, d, type = 'square', slide = 0) { try { txac ??= new AudioContext(); const o = txac.createOscillator(), g = txac.createGain(), t = txac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d); g.gain.setValueAtTime(.045, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(txac.destination); o.start(t); o.stop(t + d + .02); } catch {} }
@@ -360,11 +371,11 @@ function txSend(b) {
   if (tx.mode === 'over') { if (tx.dead > 40) txNew(); return; }
   if (tx.shuffle > 0) return;  // pendant le mélange, les bacs bougent : on attend
   const p = tx.q.find(p => p.y > -8); if (!p) return;
-  if (p.k === 'double' && p.n > 1) { p.n--; tx.fly.push({...p, k: '', b, t: 0, x0: TX.CX, y0: p.y - 10}); txBeep(360, .05); return; }  // le carton du dessus part, celui du dessous reste
+  if (p.k === 'double' && p.n > 1) { p.n--; tx.fly.push({...p, k: '', b, t: 0, x0: TX.CX, y0: p.y - 10, rule: tx.rule}); txBeep(360, .05); return; }  // le carton du dessus part, celui du dessous reste
   const busy = tx.fly.length > 0;
-  tx.q.splice(tx.q.indexOf(p), 1); tx.fly.push({...p, b, t: 0, x0: TX.CX, y0: p.y, broke: p.k === 'fragile' && busy}); txBeep(300, .05);
+  tx.q.splice(tx.q.indexOf(p), 1); tx.fly.push({...p, b, t: 0, x0: TX.CX, y0: p.y, broke: p.k === 'fragile' && busy, rule: tx.rule}); txBeep(300, .05);
 }
-function txLose(x, y, why) { tx.lives--; tx.combo = 0; tx.fx.push({x, y, t: 0, txt: why, c: '#ff4a5a'}); txBeep(140, .3, 'sawtooth', 70); if (tx.lives <= 0) { tx.mode = 'over'; tx.dead = 0; tx.record = best('triexpress', tx.score); txs.sorted += tx.sorted; txs.bombs += tx.bombs; saveGames(); txInfo(); } }
+function txLose(x, y, why) { tx.lives--; tx.combo = 0; tx.fx.push({x, y, t: 0, txt: why, c: '#ff4a5a'}); txBeep(140, .3, 'sawtooth', 70); if (tx.lives <= 0) { tx.mode = 'over'; tx.dead = 0; tx.record = best('triexpress', tx.score); txs.sorted += tx.sorted; txs.bombs += tx.bombs; txs.rules = (txs.rules || 0) + tx.rules; saveGames(); txInfo(); } }
 function txUpdate() {
   for (const f of tx.fx) f.t++; tx.fx = tx.fx.filter(f => f.t < 40);
   if (tx.mode === 'over') { tx.dead++; return; }
@@ -372,7 +383,7 @@ function txUpdate() {
   const v = txSpeed();
   // nouveaux colis en haut du tapis, de plus en plus serrés ; une bombe de temps en temps
   if (--tx.spawn <= 0) { const bomb = tx.sorted > 8 && Math.random() < .14, r = Math.random(), k = bomb || tx.sorted < 20 ? '' : r < .09 ? 'fragile' : r < .18 ? 'double' : '';
-    tx.q.push({c: bomb ? -1 : Math.floor(Math.random() * 3), y: -20, k, n: k === 'double' ? 2 : 1}); tx.spawn = Math.max(26, 62 - tx.sorted / 3) * (.8 + Math.random() * .4) / (v / .45) * 1.6; }
+    tx.q.push({c: bomb ? -1 : Math.floor(Math.random() * 3), s: Math.floor(Math.random() * 3), w: Math.floor(Math.random() * 3), y: -20, k, n: k === 'double' ? 2 : 1}); tx.spawn = Math.max(26, 62 - tx.sorted / 3) * (.8 + Math.random() * .4) / (v / .45) * 1.6; }
   for (let i = 0; i < tx.q.length; i++) { const p = tx.q[i], prev = tx.q[i - 1], stop = prev ? prev.y - TXB.GAP - (prev.n > 1 ? 10 : 0) : 999; p.y = Math.min(p.y + (i === 0 && p.c < 0 ? Math.max(4 * v, 2.5) : v), stop); }  // une bombe en tête file vers le trou : elle ne bloque pas la file
   const front = tx.q[0];
   if (front && front.y >= TX.GATE) { tx.q.shift(); if (front.c < 0) txBombOut(); else txLose(TX.CX, TX.GATE, 'RATÉ'); }
@@ -381,12 +392,12 @@ function txUpdate() {
     const bx = TX.BINS[f.b];
     if (f.c < 0) txLose(bx, TX.BINY - 20, 'BOUM');
     else if (f.broke) txLose(bx, TX.BINY - 20, 'CASSÉ');
-    else if (tx.bins[f.b] !== f.c) txLose(bx, TX.BINY - 20, 'MAUVAIS BAC');
+    else if (tx.bins[f.b] !== txVal(f, f.rule || tx.rule)) txLose(bx, TX.BINY - 20, 'MAUVAIS BAC');
     else { tx.combo++; tx.sorted++; const pts = 10 * Math.min(5, 1 + Math.floor(tx.combo / 5)) * (f.k === 'fragile' ? 2 : 1); tx.score += pts; tx.fx.push({x: bx, y: TX.BINY - 20, t: 0, txt: '+' + pts, c: '#7ee07a'}); txBeep(660 + Math.min(8, tx.combo) * 60, .07, 'square', 990);
-      if (tx.sorted % 15 === 0) { tx.shuffle = 70; tx.binsFrom = [...tx.bins]; let n; do n = [...tx.bins].sort(() => Math.random() - .5); while (n.every((c, i) => c === tx.bins[i])); tx.bins = n; txBeep(440, .5, 'triangle', 880); } }
+      if (tx.sorted % 15 === 0) { if (tx.sorted % 30 === 0) txRule(); tx.shuffle = 70; tx.binsFrom = [...tx.bins]; let n; do n = [...tx.bins].sort(() => Math.random() - .5); while (n.every((c, i) => c === tx.bins[i])); tx.bins = n; txBeep(440, .5, 'triangle', 880); } }
   }
   tx.fly = tx.fly.filter(f => !f.done);
-  if (tx.shuffle > 0) tx.shuffle--;
+  if (tx.shuffle > 0) tx.shuffle--; if (tx.ruleT > 0) tx.ruleT--;
 }
 function txBinX(i) {  // pendant le mélange, chaque bac glisse de son ancienne place à la nouvelle
   if (!tx.shuffle || !tx.binsFrom) return TX.BINS[i];
@@ -412,13 +423,15 @@ function txDraw() {
   for (let i = 0; i < 3; i++) {
     const c = tx.bins[i], [, col, dk, icon] = TX_COL[c], x = Math.round(txBinX(i)) - 26, y = BINY - 16;
     px(g, '#140a04', x, y, 52, 34); px(g, '#8a5a2a', x + 1, y + 1, 50, 32); px(g, '#6a4220', x + 1, y + 10, 50, 2); px(g, '#6a4220', x + 1, y + 22, 50, 2); px(g, '#a87038', x + 1, y + 1, 50, 1);
-    px(g, '#140a04', x + 14, y - 8, 24, 14); px(g, col, x + 15, y - 7, 22, 12); px(g, dk, x + 15, y + 3, 22, 2);
-    const ic = txCanvas(5, 5, h => sprite(h, icon, 0, 0, {k: '#140a04', w: '#ffffff', r: '#fff4e0', b: '#fff4e0', g: '#fff4e0'})); g.drawImage(ic, x + 18, y - 5, 10, 10);
+    const R = tx.rule; px(g, '#140a04', x + 14, y - 8, 24, 14); px(g, R === 'c' ? col : '#e8d8b0', x + 15, y - 7, 22, 12); px(g, R === 'c' ? dk : '#b8a880', x + 15, y + 3, 22, 2);
+    if (R === 'c') { const ic = txCanvas(5, 5, h => sprite(h, icon, 0, 0, {k: '#140a04', w: '#ffffff', r: '#fff4e0', b: '#fff4e0', g: '#fff4e0'})); g.drawImage(ic, x + 18, y - 5, 10, 10); }
+    else if (R === 's') g.drawImage(TX_FORM[c], x + 15, y - 6, 13, 11);
+    else for (let k = 0; k <= c; k++) px(g, '#140a04', x + 16 + k * 4, y - 5, 2, 8);
     PXK.fill(g, ['←', '↓', '→'][i], x + 33, y - 3, '#140a04', PXK.scale(8), 'center');
   }
   // les colis : la file sur le tapis, ceux qui volent vers un bac (en arc)
   tx.q.forEach((p, i) => { const y = Math.round(p.y - 11);
-    if (p.k === 'double' && p.n > 1) { g.drawImage(TX_BOX[p.c], CX - 13, y - 10); pxFont(g, 'x2', CX - 22, y + 4, '#ffd84a', 8, 'right'); }  // le carton du dessus
+    if (p.k === 'double' && p.n > 1) { g.drawImage(txImg({...p, k: ''}), CX - 13, y - 10); pxFont(g, 'x2', CX - 22, y + 4, '#ffd84a', 8, 'right'); }  // le carton du dessus
     g.drawImage(txImg(p), CX - 13, y);
     if (i === 0 && p.y > -8) { const c = p.c < 0 ? '#ff4a5a' : '#ffffff'; px(g, c, CX - 17, y - 1, 2, 2); px(g, c, CX + 15, y - 1, 2, 2); if (p.c < 0) PXK.fill(g, '↑', CX + 24, y + 13, Math.floor(tx.tick / 8) % 2 ? '#ffd84a' : '#ff8a2a', PXK.scale(8), 'center'); } });
   for (const f of tx.fly) { const tx1 = txBinX(f.b), x = f.x0 + (tx1 - f.x0) * f.t, y = f.y0 + (BINY - 14 - f.y0) * f.t - Math.sin(f.t * Math.PI) * 40; g.drawImage(txImg(f), Math.round(x - 13), Math.round(y - 11)); }
@@ -427,13 +440,15 @@ function txDraw() {
   pxFont(g, String(tx.score), 6, 14, '#ffffff', 12);
   for (let i = 0; i < 3; i++) sprite(g, ['.kk.kk.', 'krrkrrk', 'krrrrrk', '.krrrk.', '..krk..', '...k...'], W - 26 + i * 8 - 8, 6, {k: '#140a04', r: i < tx.lives ? '#ff4a5a' : '#4a3018'});
   const mult = Math.min(5, 1 + Math.floor(tx.combo / 5)); if (mult > 1) pxFont(g, 'x' + mult, W - 6, 28, '#7ee07a', 8, 'right');
-  if (tx.shuffle > 0) PXK.fill(g, 'MÉLANGE !', W / 2, 30, Math.floor(tx.tick / 6) % 2 ? '#ffd84a' : '#ffffff', PXK.scale(12), 'center');
-  if (tx.mode === 'ready') gameText(g, W, [['TRI EXPRESS', '#ffd84a', 16], ['← ↓ → : choisir le bac', '#ffffff'], ['↑ : jeter la bombe', '#d0b08a'], ['Record ' + (games.best.triexpress || 0), '#7ee07a']], 100);
+  pxFont(g, TX_RULES[tx.rule], 6, 26, '#d0b08a', 6);
+  if (tx.ruleT > 0) { px(g, '#140a04', 18, 52, W - 36, 38); px(g, '#ffd84a', 19, 53, W - 38, 36); PXK.fill(g, 'LE PATRON :', W / 2, 66, '#140a04', PXK.scale(8), 'center'); PXK.fill(g, TX_ORDER[tx.rule], W / 2, 82, '#140a04', PXK.scale(10), 'center'); }
+  else if (tx.shuffle > 0) PXK.fill(g, 'MÉLANGE !', W / 2, 30, Math.floor(tx.tick / 6) % 2 ? '#ffd84a' : '#ffffff', PXK.scale(12), 'center');
+  if (tx.mode === 'ready') gameText(g, W, [['TRI EXPRESS', '#ffd84a', 16], ['← ↓ → : choisir le bac', '#ffffff'], ['↑ : jeter la bombe', '#d0b08a'], ['La règle change en route', '#ffb070'], ['Record ' + (games.best.triexpress || 0), '#7ee07a']], 100);
   if (tx.mode === 'pause') gameText(g, W, [['PAUSE', '#ffffff', 12], ['Une touche pour reprendre', '#d0b08a']], 110);
   if (tx.mode === 'over' && tx.dead > 20) gameText(g, W, [['FIN DE LA JOURNÉE', '#ff4a5a', 12], ['Score ' + tx.score, '#ffffff'], [tx.sorted + ' colis triés', '#d0b08a'], [tx.record ? 'NOUVEAU RECORD !' : 'Record ' + (games.best.triexpress || 0), '#7ee07a'], [tx.dead > 40 ? 'Une touche pour recommencer' : '', '#d0b08a']], 96);
 }
 function txInfo() {
-  $('txStats').replaceChildren(...[['Meilleur score', games.best.triexpress || 0], ['Journées', txs.days], ['Colis triés', txs.sorted], ['Bombes évitées', txs.bombs]].flatMap(([a, b]) => [el('span', '', a), el('b', '', String(b))]));
+  $('txStats').replaceChildren(...[['Meilleur score', games.best.triexpress || 0], ['Journées', txs.days], ['Colis triés', txs.sorted], ['Bombes évitées', txs.bombs], ['Règles changées', txs.rules || 0]].flatMap(([a, b]) => [el('span', '', a), el('b', '', String(b))]));
 }
 document.addEventListener('keydown', e => {
   if (!view.classList.contains('on') || !tx || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.repeat) return;
@@ -455,7 +470,11 @@ $('txNew').onclick = () => { txNew(); $('txNew').blur(); };
   tx.q = [{c: -1, y: 20}, {c: 0, y: -4}]; for (let i = 0; i < 80; i++) txUpdate(); const fast = tx.q.length === 1 && tx.q[0].c === 0;  // elle file seule et libère la file
   tx.q = [{c: 1, y: 100, k: 'double', n: 2}]; txSend(tx.bins.indexOf(1)); const dbl1 = tx.q.length === 1; txSend(tx.bins.indexOf(1)); for (let i = 0; i < 30; i++) txUpdate(); const dbl = dbl1 && !tx.q.length && tx.lives === 2;
   tx.q = [{c: 0, y: 100}, {c: 2, y: 76, k: 'fragile'}]; txSend(tx.bins.indexOf(0)); txSend(tx.bins.indexOf(2)); for (let i = 0; i < 40; i++) txUpdate(); const frag = tx.lives === 1;  // lancé pendant un vol : cassé
-  console.assert(good && bad && bomb && drop && fast && dbl && frag, 'triexpress', {good, bad, bomb, drop, fast, dbl, frag});
+  tx.lives = 3; tx.rule = 'w'; tx.q = [{c: 0, s: 1, w: 2, y: 100}]; txSend(tx.bins.indexOf(2)); for (let i = 0; i < 20; i++) txUpdate(); const wOk = tx.lives === 3;
+  tx.q = [{c: 1, s: 1, w: 0, y: 100}]; txSend(tx.bins.indexOf(1)); for (let i = 0; i < 20; i++) txUpdate(); const wBad = tx.lives === 2;
+  tx.rule = 'c'; tx.lives = 3; tx.fly = []; tx.sorted = 29; tx.shuffle = 0; tx.q = [{c: 2, s: 0, w: 0, y: 100}]; txSend(tx.bins.indexOf(2)); for (let i = 0; i < 20; i++) txUpdate(); const changed = tx.rule !== 'c' && tx.rules === 1;
+  for (const s of [0, 1, 2]) for (const w of [0, 1, 2]) txImg({c: s, s, w, k: w ? '' : 'fragile'});
+  console.assert(good && bad && bomb && drop && fast && dbl && frag && wOk && wBad && changed, 'triexpress', {good, bad, bomb, drop, fast, dbl, frag, wOk, wBad, changed});
   if (realBest === undefined) delete games.best.triexpress; else games.best.triexpress = realBest; Object.assign(txs, realStats);
   tx = keep;
 }

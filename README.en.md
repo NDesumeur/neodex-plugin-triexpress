@@ -4,6 +4,10 @@ A reflex game at the sorting centre: parcels come down the conveyor belt, send e
 
 *Version française : [README.md](README.md)*
 
+## Changing rules (new in 1.2.0)
+
+Each parcel has a colour (its label), a shape (cardboard box, wooden crate or sack) and a weight (one to three black blocks). You start sorting by colour; every 30 parcels the boss announces a new rule: by shape or by weight. The bin labels change with the rule, and the current rule stays written at the top left.
+
 ## Controls
 
 - **←**: left bin, **↓**: middle bin, **→**: right bin. You can also click the bin.

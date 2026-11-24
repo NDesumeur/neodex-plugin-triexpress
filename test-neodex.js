@@ -20,6 +20,12 @@ module.exports = async ({ pj, sleep }) => {
   await key(k); await sleep(900);
   const d2 = await X(`return t.q.length + ',' + t.sorted + ',' + t.lives;`); if (d2 !== '1,2,3') throw new Error('le colis double devait partir en deux fois : ' + d2);
   await shot('3-fragile');
+  // la règle change : par forme, le sac va dans le bac du sac, quelle que soit sa couleur
+  await X(`t.q = [{c: 0, s: 2, w: 1, y: 150}, {c: 1, s: 1, w: 2, y: 126}, {c: 2, s: 0, w: 0, y: 102}]; t.rule = 's'; t.ruleT = 110; return 0;`); await sleep(300); await shot('4-forme');
+  const kf = ['ArrowLeft', 'ArrowDown', 'ArrowRight'][await X(`return t.bins.indexOf(2);`)], s0 = await X(`return t.sorted;`);
+  await key(kf); await sleep(900);
+  const fr = await X(`return [t.sorted, t.lives];`); if (fr[0] !== s0 + 1 || fr[1] !== 3) throw new Error('tri par forme : ' + fr);
+  await X(`t.rule = 'w'; t.ruleT = 0; return 0;`); await sleep(200); await shot('5-poids');
   await pj(`document.getElementById('txFs').click(), 0`); await sleep(700);
   const fs = await pj(`(() => { const c = document.getElementById('txCanvas'), r = c.getBoundingClientRect(); return document.fullscreenElement === c.parentElement && (Math.abs(r.height - innerHeight) < 3 || Math.abs(r.width - innerWidth) < 3); })()`);
   await pj(`document.fullscreenElement && document.exitFullscreen(), 0`); await sleep(300);
@@ -27,5 +33,5 @@ module.exports = async ({ pj, sleep }) => {
   const L = await pj(`(() => { const r = document.getElementById('txCanvas').getBoundingClientRect(); let s = 0; for (let e = document.getElementById('txCanvas').parentElement; e; e = e.parentElement) s += e.scrollTop; return { bottom: Math.round(r.bottom + s), h: Math.round(r.height), wh: innerHeight, ww: innerWidth, sw: document.documentElement.scrollWidth }; })()`);
   if (L.bottom > L.wh + 1 || L.sw > L.ww + 1 || L.h < 300) throw new Error('le jeu dépasse la fenêtre ou reste petit : ' + JSON.stringify(L));
   const errs = await pj(`window.__e.join(' | ')`); if (errs) throw new Error('erreur : ' + errs);
-  return 'bombe jetée avec ↑ · colis double en deux fois · plein écran · ' + L.h + ' px dans ' + L.ww + '×' + L.wh;
+  return 'bombe jetée avec ↑ · colis double en deux fois · sac trié par forme · plein écran · ' + L.h + ' px dans ' + L.ww + '×' + L.wh;
 };
