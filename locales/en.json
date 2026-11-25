@@ -85,5 +85,15 @@
  "TRIEZ PAR POIDS !": "SORT BY WEIGHT!",
  "La règle change en route": "The rule changes on the way",
  "Règles changées": "Rule changes",
- "Un jeu de réflexes au centre de tri : envoie chaque colis du tapis dans le bac de sa couleur avec ← ↓ →, avant qu'il passe la ligne. Les bacs se mélangent tous les 15 colis, les bombes doivent passer sans être triées, le combo multiplie les points jusqu'à ×5 et le tapis accélère. Trois erreurs et la journée est finie. Bouton plein écran et jeu à la taille de l'écran, tapis et colis plus grands, colis fragiles et doubles, et les bombes ne bloquent plus le jeu : elles filent vers le trou, et ↑ les y jette tout de suite. La règle change en route : par couleur, par forme ou par poids, annoncée par le patron.": "A reflex game at the sorting centre: send each parcel on the belt to the bin of its colour with ← ↓ →, before it crosses the line. The bins shuffle every 15 parcels, bombs must go through unsorted, the combo multiplies points up to ×5 and the belt speeds up. Three mistakes and the day is over. Full screen button and a game that fits the screen, a bigger belt and parcels, fragile and double parcels, and bombs no longer block the game: they rush to the hole, and ↑ drops them in right away. The rule changes on the way: by colour, by shape or by weight, announced by the boss."
+ "Un jeu de réflexes au centre de tri : envoie chaque colis du tapis dans le bac de sa couleur avec ← ↓ →, avant qu'il passe la ligne. Les bacs se mélangent tous les 15 colis, les bombes doivent passer sans être triées, le combo multiplie les points jusqu'à ×5 et le tapis accélère. Trois erreurs et la journée est finie. Bouton plein écran et jeu à la taille de l'écran, tapis et colis plus grands, colis fragiles et doubles, et les bombes ne bloquent plus le jeu : elles filent vers le trou, et ↑ les y jette tout de suite. La règle change en route : par couleur, par forme ou par poids, annoncée par le patron.": "A reflex game at the sorting centre: send each parcel on the belt to the bin of its colour with ← ↓ →, before it crosses the line. The bins shuffle every 15 parcels, bombs must go through unsorted, the combo multiplies points up to ×5 and the belt speeds up. Three mistakes and the day is over. Full screen button and a game that fits the screen, a bigger belt and parcels, fragile and double parcels, and bombs no longer block the game: they rush to the hole, and ↑ drops them in right away. The rule changes on the way: by colour, by shape or by weight, announced by the boss.",
+ "Premier jour au centre": "First day at the depot",
+ "Faire 100 points en une journée": "Score 100 points in one day",
+ "Trieur confirmé": "Seasoned sorter",
+ "Faire 500 points en une journée": "Score 500 points in one day",
+ "Employé du mois": "Employee of the month",
+ "Faire 1 000 points en une journée": "Score 1,000 points in one day",
+ "Mille colis": "A thousand parcels",
+ "Trier 1 000 colis en tout": "Sort 1,000 parcels in total",
+ "Démineur": "Bomb squad",
+ "Éviter 50 bombes en tout": "Avoid 50 bombs in total"
 }

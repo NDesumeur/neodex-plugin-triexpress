@@ -1,7 +1,7 @@
 {
   "id": "neodex.triexpress",
   "name": "Tri express",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "author": "NDesumeur",
   "description": "Un jeu de réflexes au centre de tri : envoie chaque colis du tapis dans le bac de sa couleur avec ← ↓ →, avant qu'il passe la ligne. Les bacs se mélangent tous les 15 colis, les bombes doivent passer sans être triées, le combo multiplie les points jusqu'à ×5 et le tapis accélère. Trois erreurs et la journée est finie. Bouton plein écran et jeu à la taille de l'écran, tapis et colis plus grands, colis fragiles et doubles, et les bombes ne bloquent plus le jeu : elles filent vers le trou, et ↑ les y jette tout de suite. La règle change en route : par couleur, par forme ou par poids, annoncée par le patron.",
   "icon": "icon.png",
@@ -22,5 +22,41 @@
   "sdk": "2.1.0",
   "permissions": [
     "storage"
+  ],
+  "succes": [
+    {
+      "id": "s100",
+      "nom": "Premier jour au centre",
+      "texte": "Faire 100 points en une journée"
+    },
+    {
+      "id": "s500",
+      "nom": "Trieur confirmé",
+      "texte": "Faire 500 points en une journée"
+    },
+    {
+      "id": "s1000",
+      "nom": "Employé du mois",
+      "texte": "Faire 1 000 points en une journée"
+    },
+    {
+      "id": "mille",
+      "nom": "Mille colis",
+      "texte": "Trier 1 000 colis en tout"
+    },
+    {
+      "id": "bombes",
+      "nom": "Démineur",
+      "texte": "Éviter 50 bombes en tout",
+      "cache": true
+    }
+  ],
+  "records": [
+    {
+      "id": "score",
+      "nom": "Meilleur score",
+      "sens": "haut",
+      "format": "nombre"
+    }
   ]
 }

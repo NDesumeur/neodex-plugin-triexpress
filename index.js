@@ -303,6 +303,9 @@ export default async function (ctx) {
   const saveGames = () => { clearTimeout(gamesTimer); gamesTimer = setTimeout(() => { gamesTimer = null; folder.write('games', games).catch(() => {}); }, 500); };
   const best = (k, v) => { const b = games.best[k]; if (b == null || v > b) { games.best[k] = v; saveGames(); return true; } return false; };
   const gstore = (k, init) => (games[k] ??= init);
+  // les trophées de NeoDex (3.4.8 et plus) : succès et records déclarés dans plugin.json ; sur un NeoDex plus ancien, rien ne se passe
+  const trophy = id => { ctx.games?.unlock(id).catch(() => {}); };
+  const trophyRecord = (id, v) => { if (v != null && Number.isFinite(+v)) ctx.games?.record(id, +v).catch(() => {}); };
 function gameLoop(st, appKey, update, draw) {
   cancelAnimationFrame(st.raf);
   const STEP = 1000 / 60; let acc = 0, last = performance.now();
@@ -448,6 +451,7 @@ function txDraw() {
   if (tx.mode === 'over' && tx.dead > 20) gameText(g, W, [['FIN DE LA JOURNÉE', '#ff4a5a', 12], ['Score ' + tx.score, '#ffffff'], [tx.sorted + ' colis triés', '#d0b08a'], [tx.record ? 'NOUVEAU RECORD !' : 'Record ' + (games.best.triexpress || 0), '#7ee07a'], [tx.dead > 40 ? 'Une touche pour recommencer' : '', '#d0b08a']], 96);
 }
 function txInfo() {
+  setTimeout(txTrophies);
   $('txStats').replaceChildren(...[['Meilleur score', games.best.triexpress || 0], ['Journées', txs.days], ['Colis triés', txs.sorted], ['Bombes évitées', txs.bombs], ['Règles changées', txs.rules || 0]].flatMap(([a, b]) => [el('span', '', a), el('b', '', String(b))]));
 }
 document.addEventListener('keydown', e => {
@@ -480,6 +484,12 @@ $('txNew').onclick = () => { txNew(); $('txNew').blur(); };
 }
 $('txCanvas').__tx = {st: () => tx, drop: () => txDrop()};  // pour le test « local »
 $('txFs').onclick = () => { $('txFs').blur(); try { document.fullscreenElement ? document.exitFullscreen() : $('txCanvas').parentElement.requestFullscreen?.().catch(() => {}); } catch {} };
+// les trophées, tirés des statistiques et des records gardés (aussi à l'ouverture : ce qui a été fait avant compte)
+function txTrophies() {
+  const b = games.best.triexpress || 0, sig = [b, txs.sorted, txs.bombs].join(); if (sig === txTrophies.sig) return; txTrophies.sig = sig;
+  trophyRecord('score', b || null);
+  if (b >= 100) trophy('s100'); if (b >= 500) trophy('s500'); if (b >= 1000) trophy('s1000'); if (txs.sorted >= 1000) trophy('mille'); if (txs.bombs >= 50) trophy('bombes');
+}
 ctx.onOpen(() => {
   if (!tx || !tx.g) { txNew(); tx.g = $('txCanvas').getContext('2d'); }
   gameLoop(tx, 'triexpress', txUpdate, txDraw); txInfo();
